@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     std::stringstream output;
     output << "section .data\n"
            << "DataPointer dw 0\n"
-           << "Data db 0\n"
+           << "Data times 30000 db 0\n"
            << "section .text\n"
            << "global _start\n"
            << "_start:\n";
