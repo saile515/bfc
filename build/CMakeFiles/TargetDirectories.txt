@@ -1,3 +1,0 @@
-/home/saile515/Documents/projects/bfc/build/CMakeFiles/bfc.dir
-/home/saile515/Documents/projects/bfc/build/CMakeFiles/edit_cache.dir
-/home/saile515/Documents/projects/bfc/build/CMakeFiles/rebuild_cache.dir
