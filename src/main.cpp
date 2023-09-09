@@ -32,9 +32,9 @@ class Scope {
     void step() {
         char cmd = file[index];
         if (cmd == '>') {
-            output << "    add DataPointer, 1\n";
+            output << "    add dword [DataPointer], 1\n";
         } else if (cmd == '<') {
-            output << "    sub DataPointer, 1\n";
+            output << "    sub dword [DataPointer], 1\n";
         } else if (cmd == '+') {
             output << "    mov rsi, [DataPointer]\n"
                    << "    mov al, [Data+rsi]\n"
@@ -82,7 +82,7 @@ class Scope {
 };
 
 void add_scope_to_output(std::stringstream &output, Scope &scope) {
-    output << scope.scope_id << ":\n" << scope.output.str();
+    output << "scope" << scope.scope_id << ":\n" << scope.output.str();
     for (Scope &sub_scope : scope.sub_scopes) {
         add_scope_to_output(output, sub_scope);
     }
