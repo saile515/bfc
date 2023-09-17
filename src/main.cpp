@@ -9,46 +9,41 @@ unsigned int next_scope() { return ++last_scope; }
 
 class Scope {
   public:
-    Scope(std::string &file, unsigned int &index) : file(file), index(index) {
+    Scope(std::string &file, int &index) : file(file), index(index) {
         scope_id = next_scope();
         init();
     }
     std::stringstream output;
-    std::vector<Scope> sub_scopes;
     unsigned int scope_id;
 
   private:
     std::string &file;
-    unsigned int &index;
+    int &index;
     bool end_of_scope = false;
 
     void init() {
         do {
-            step();
             index++;
+            step();
         } while (index < file.length() && !end_of_scope);
     }
 
     void step() {
         char cmd = file[index];
         if (cmd == '>') {
-            output << "    add dword [DataPointer], 1\n";
+            output << "    inc qword [DataPointer]\n";
         } else if (cmd == '<') {
-            output << "    sub dword [DataPointer], 1\n";
+            output << "    dec qword [DataPointer]\n";
         } else if (cmd == '+') {
-            output << "    mov rsi, [DataPointer]\n"
-                   << "    mov al, [Data+rsi]\n"
-                   << "    inc al\n"
-                   << "    mov [Data+rsi], al\n";
+            output << "    mov rax, qword [DataPointer]\n"
+                   << "    inc byte [Data+rax]\n";
         } else if (cmd == '-') {
-            output << "    mov rsi, [DataPointer]\n"
-                   << "    mov al, [Data+rsi]\n"
-                   << "    dec al\n"
-                   << "    mov [Data+rsi], al\n";
+            output << "    mov rax, qword [DataPointer]\n"
+                   << "    dec byte [Data+rax]\n";
         } else if (cmd == '.') {
-            output << "    mov rsi, [DataPointer]\n"
-                   << "    mov al, [Data+rsi]\n"
-                   << "    push rax\n"
+            output << "    mov rax, qword [DataPointer]\n"
+                   << "    mov bl, byte [Data+rax]\n"
+                   << "    push rbx\n"
                    << "    mov rax, 1\n"
                    << "    mov rdi, 1\n"
                    << "    mov rsi, rsp\n"
@@ -58,35 +53,30 @@ class Scope {
         } else if (cmd == ',') {
             output << "    mov rax, 0\n"
                    << "    mov rdi, 0\n"
-                   << "    mov rbx, [DataPointer]\n"
-                   << "    mov rsi, [Data+rbx]\n"
+                   << "    mov rbx, qword [DataPointer]\n"
+                   << "    lea rsi, qword [Data+rbx]\n"
                    << "    mov rdx, 1\n"
                    << "    syscall\n";
         } else if (cmd == '[') {
-            index++;
             Scope scope(file, index);
-            output << "    mov rsi, [DataPointer]\n"
-                   << "    mov al, [Data+rsi]\n"
-                   << "    cmp rax, 0\n"
-                   << "    ja " << scope.scope_id << "\n";
-            sub_scopes.push_back(std::move(scope));
+            output << "    mov rax, qword [DataPointer]\n"
+                   << "    mov bl, byte [Data+rax]\n"
+                   << "    cmp bl, 0\n"
+                   << "    je end" << scope.scope_id << "\n"
+                   << "    jmp start" << scope.scope_id << "\n"
+                   << "start" << scope.scope_id << ":\n"
+                   << scope.output.str();
         } else if (cmd == ']') {
-            output << "    mov rsi, [DataPointer]\n"
-                   << "    mov al, [Data+rsi]\n"
-                   << "    cmp rax, 0\n"
-                   << "    je " << scope_id << "\n"
-                   << "    ret\n";
+            output << "    mov rax, qword [DataPointer]\n"
+                   << "    mov bl, [Data+rax]\n"
+                   << "    cmp bl, 0\n"
+                   << "    ja start" << scope_id << "\n"
+                   << "    jmp end" << scope_id << "\n"
+                   << "end" << scope_id << ":\n";
             end_of_scope = true;
         }
     }
 };
-
-void add_scope_to_output(std::stringstream &output, Scope &scope) {
-    output << "scope" << scope.scope_id << ":\n" << scope.output.str();
-    for (Scope &sub_scope : scope.sub_scopes) {
-        add_scope_to_output(output, sub_scope);
-    }
-}
 
 int main(int argc, char **argv) {
 
@@ -107,13 +97,13 @@ int main(int argc, char **argv) {
 
     std::stringstream output;
     output << "section .data\n"
-           << "DataPointer dd 0\n"
+           << "DataPointer dq 0\n"
            << "Data times 30000 db 0\n"
            << "section .text\n"
            << "global _start\n"
            << "_start:\n";
 
-    unsigned int index = 0;
+    int index = -1;
 
     Scope global_scope(file, index);
     output << global_scope.output.str();
@@ -121,10 +111,6 @@ int main(int argc, char **argv) {
     output << "    mov rax, 60\n"
            << "    mov rdi, 0\n"
            << "    syscall\n";
-
-    for (Scope &scope : global_scope.sub_scopes) {
-        add_scope_to_output(output, scope);
-    }
 
     std::ofstream output_file("build/out.asm");
     output_file << output.rdbuf();
