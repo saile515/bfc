@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -80,7 +81,7 @@ class Scope {
 
 int main(int argc, char **argv) {
 
-    if (argc != 2) {
+    if (argc != 3) {
         std::cout << "Wrong usage\n";
         return 1;
     }
@@ -112,9 +113,33 @@ int main(int argc, char **argv) {
            << "    mov rdi, 0\n"
            << "    syscall\n";
 
-    std::ofstream output_file("build/out.asm");
+    bool build_folder_exists = std::filesystem::exists("build");
+    if (!build_folder_exists) {
+        std::filesystem::create_directory("build");
+    }
+
+    std::string output_folder;
+    if (!std::filesystem::exists("build")) {
+        output_folder = "build";
+    } else {
+        int index = 0;
+        while (std::filesystem::exists("build" + std::to_string(index))) {
+            index++;
+        }
+        output_folder = "build" + std::to_string(index);
+    }
+
+    std::filesystem::create_directory(output_folder);
+
+    std::ofstream output_file(output_folder + "/out.asm");
     output_file << output.rdbuf();
     output_file.close();
+
+    std::system(("nasm -felf64 " + output_folder + "/out.asm -o " +
+                 output_folder + "/out.o")
+                    .c_str());
+    std::system(("ld " + output_folder + "/out.o -o " + argv[2]).c_str());
+    std::filesystem::remove_all(output_folder);
 
     return 0;
 }

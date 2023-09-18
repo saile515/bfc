@@ -8,8 +8,7 @@ A Brainfuck compiler targeting x86-64 NASM assembly for Linux.
 ```
 
 ## Usage
+You need to have NASM and ld installed.
 ```bash
-    bfc <file.bf>
-    nasm -felf64 build/out.asm -o build/out.o
-    ld build/out.o -o build/out
+    bfc <input.bf> <output>
 ```
